@@ -1,0 +1,59 @@
+@import 'tailwindcss';
+
+/* ── Base ──────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #F4F7FD;
+  color: #1A2332;
+}
+
+/* ── Brand color tokens ─────────────────────────────────────────── */
+:root {
+  --color-primary:   #1C50A7;
+  --color-secondary: #81BAF1;
+  --color-accent:    #DEB8CE;
+  --color-highlight: #F2AC44;
+  --color-bg:        #F4F7FD;
+  --color-surface:   #FFFFFF;
+  --color-border:    #E8EEF8;
+}
+
+/* ── Scrollbar — thin, unobtrusive ─────────────────────────────── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #C8D8ED;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #96B4D8;
+}
+
+/* ── Remove default list styles ─────────────────────────────────── */
+ul, ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Focus visible — accessible ring ───────────────────────────── */
+:focus-visible {
+  outline: 2px solid #1C50A7;
+  outline-offset: 2px;
+}
