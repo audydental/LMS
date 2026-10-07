@@ -42,65 +42,113 @@ CREATE POLICY "profiles_update_own"
   USING (auth.uid() = id)
   WITH CHECK (
     auth.uid() = id
-    -- Prevent self-elevation: role must remain unchanged unless admin
     AND (role = (SELECT role FROM profiles WHERE id = auth.uid()) OR is_admin())
   );
 
-CREATE POLICY "profiles_admin_all"
-  ON profiles FOR ALL
+CREATE POLICY "profiles_admin_insert"
+  ON profiles FOR INSERT
+  WITH CHECK (is_admin());
+
+CREATE POLICY "profiles_admin_delete"
+  ON profiles FOR DELETE
   USING (is_admin());
 
--- ── departments & positions — all authenticated can read ─────
-CREATE POLICY "departments_read"
-  ON departments FOR SELECT USING (auth.uid() IS NOT NULL);
+-- ── departments ──────────────────────────────────────────────
+CREATE POLICY "departments_select"
+  ON departments FOR SELECT
+  USING (auth.uid() IS NOT NULL);
 
-CREATE POLICY "departments_admin"
-  ON departments FOR ALL USING (is_admin());
+CREATE POLICY "departments_admin_insert"
+  ON departments FOR INSERT
+  WITH CHECK (is_admin());
 
-CREATE POLICY "positions_read"
-  ON positions FOR SELECT USING (auth.uid() IS NOT NULL);
+CREATE POLICY "departments_admin_update"
+  ON departments FOR UPDATE
+  USING (is_admin());
 
-CREATE POLICY "positions_admin"
-  ON positions FOR ALL USING (is_admin());
+CREATE POLICY "departments_admin_delete"
+  ON departments FOR DELETE
+  USING (is_admin());
 
--- ── stages — employees see published; admins see all ─────────
-CREATE POLICY "stages_read_published"
+-- ── positions ────────────────────────────────────────────────
+CREATE POLICY "positions_select"
+  ON positions FOR SELECT
+  USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "positions_admin_insert"
+  ON positions FOR INSERT
+  WITH CHECK (is_admin());
+
+CREATE POLICY "positions_admin_update"
+  ON positions FOR UPDATE
+  USING (is_admin());
+
+CREATE POLICY "positions_admin_delete"
+  ON positions FOR DELETE
+  USING (is_admin());
+
+-- ── stages ───────────────────────────────────────────────────
+CREATE POLICY "stages_select_published"
   ON stages FOR SELECT
   USING (
     (status = 'published' AND auth.uid() IS NOT NULL)
     OR is_admin()
   );
 
-CREATE POLICY "stages_admin_write"
-  ON stages FOR INSERT UPDATE DELETE
+CREATE POLICY "stages_admin_insert"
+  ON stages FOR INSERT
+  WITH CHECK (is_admin());
+
+CREATE POLICY "stages_admin_update"
+  ON stages FOR UPDATE
+  USING (is_admin());
+
+CREATE POLICY "stages_admin_delete"
+  ON stages FOR DELETE
   USING (is_admin());
 
 -- ── materials ────────────────────────────────────────────────
-CREATE POLICY "materials_read_published"
+CREATE POLICY "materials_select_published"
   ON materials FOR SELECT
   USING (
     (status = 'published' AND auth.uid() IS NOT NULL)
     OR is_admin()
   );
 
-CREATE POLICY "materials_admin_write"
-  ON materials FOR INSERT UPDATE DELETE
+CREATE POLICY "materials_admin_insert"
+  ON materials FOR INSERT
+  WITH CHECK (is_admin());
+
+CREATE POLICY "materials_admin_update"
+  ON materials FOR UPDATE
+  USING (is_admin());
+
+CREATE POLICY "materials_admin_delete"
+  ON materials FOR DELETE
   USING (is_admin());
 
 -- ── learning_cases ───────────────────────────────────────────
-CREATE POLICY "cases_read_published"
+CREATE POLICY "cases_select_published"
   ON learning_cases FOR SELECT
   USING (
     (status = 'published' AND auth.uid() IS NOT NULL)
     OR is_admin()
   );
 
-CREATE POLICY "cases_admin_write"
-  ON learning_cases FOR INSERT UPDATE DELETE
+CREATE POLICY "cases_admin_insert"
+  ON learning_cases FOR INSERT
+  WITH CHECK (is_admin());
+
+CREATE POLICY "cases_admin_update"
+  ON learning_cases FOR UPDATE
   USING (is_admin());
 
--- ── material_attachments — read if related material published ─
-CREATE POLICY "attachments_read"
+CREATE POLICY "cases_admin_delete"
+  ON learning_cases FOR DELETE
+  USING (is_admin());
+
+-- ── material_attachments ─────────────────────────────────────
+CREATE POLICY "attachments_select"
   ON material_attachments FOR SELECT
   USING (
     is_admin()
@@ -110,100 +158,169 @@ CREATE POLICY "attachments_read"
     )
   );
 
-CREATE POLICY "attachments_admin_write"
-  ON material_attachments FOR INSERT UPDATE DELETE
+CREATE POLICY "attachments_admin_insert"
+  ON material_attachments FOR INSERT
+  WITH CHECK (is_admin());
+
+CREATE POLICY "attachments_admin_update"
+  ON material_attachments FOR UPDATE
   USING (is_admin());
 
--- ── user_material_progress — own rows only ───────────────────
-CREATE POLICY "progress_own"
-  ON user_material_progress FOR ALL
+CREATE POLICY "attachments_admin_delete"
+  ON material_attachments FOR DELETE
+  USING (is_admin());
+
+-- ── user_material_progress ───────────────────────────────────
+CREATE POLICY "progress_select"
+  ON user_material_progress FOR SELECT
+  USING (auth.uid() = user_id OR is_admin());
+
+CREATE POLICY "progress_insert"
+  ON user_material_progress FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "progress_update"
+  ON user_material_progress FOR UPDATE
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "progress_admin_read"
-  ON user_material_progress FOR SELECT
-  USING (is_admin());
+CREATE POLICY "progress_delete"
+  ON user_material_progress FOR DELETE
+  USING (auth.uid() = user_id);
 
 -- ── user_case_progress ───────────────────────────────────────
-CREATE POLICY "case_progress_own"
-  ON user_case_progress FOR ALL
+CREATE POLICY "case_progress_select"
+  ON user_case_progress FOR SELECT
+  USING (auth.uid() = user_id OR is_admin());
+
+CREATE POLICY "case_progress_insert"
+  ON user_case_progress FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "case_progress_update"
+  ON user_case_progress FOR UPDATE
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "case_progress_admin_read"
-  ON user_case_progress FOR SELECT
-  USING (is_admin());
+CREATE POLICY "case_progress_delete"
+  ON user_case_progress FOR DELETE
+  USING (auth.uid() = user_id);
 
--- ── point_transactions — read own; admins read all ───────────
-CREATE POLICY "points_read_own"
+-- ── point_transactions ───────────────────────────────────────
+-- Read own or admin; insert only via server (no direct client insert)
+CREATE POLICY "points_select"
   ON point_transactions FOR SELECT
   USING (auth.uid() = user_id OR is_admin());
 
--- Points are only inserted server-side (no direct client INSERT policy)
-
 -- ── assessments ──────────────────────────────────────────────
-CREATE POLICY "assessments_read_published"
+CREATE POLICY "assessments_select_published"
   ON assessments FOR SELECT
   USING (
     (status = 'published' AND auth.uid() IS NOT NULL)
     OR is_admin()
   );
 
-CREATE POLICY "assessments_admin_write"
-  ON assessments FOR INSERT UPDATE DELETE
+CREATE POLICY "assessments_admin_insert"
+  ON assessments FOR INSERT
+  WITH CHECK (is_admin());
+
+CREATE POLICY "assessments_admin_update"
+  ON assessments FOR UPDATE
+  USING (is_admin());
+
+CREATE POLICY "assessments_admin_delete"
+  ON assessments FOR DELETE
   USING (is_admin());
 
 -- ── assessment_questions ─────────────────────────────────────
-CREATE POLICY "questions_read"
+CREATE POLICY "questions_select"
   ON assessment_questions FOR SELECT
   USING (auth.uid() IS NOT NULL);
 
-CREATE POLICY "questions_admin_write"
-  ON assessment_questions FOR INSERT UPDATE DELETE
+CREATE POLICY "questions_admin_insert"
+  ON assessment_questions FOR INSERT
+  WITH CHECK (is_admin());
+
+CREATE POLICY "questions_admin_update"
+  ON assessment_questions FOR UPDATE
+  USING (is_admin());
+
+CREATE POLICY "questions_admin_delete"
+  ON assessment_questions FOR DELETE
   USING (is_admin());
 
 -- ── assessment_options ───────────────────────────────────────
--- SECURITY NOTE: is_correct field is stripped at the API layer, not here.
--- RLS allows authenticated reads; the server-side API omits is_correct.
-CREATE POLICY "options_read"
+-- SECURITY NOTE: is_correct is NEVER returned to browser — stripped at API layer
+CREATE POLICY "options_select"
   ON assessment_options FOR SELECT
   USING (auth.uid() IS NOT NULL);
 
-CREATE POLICY "options_admin_write"
-  ON assessment_options FOR INSERT UPDATE DELETE
+CREATE POLICY "options_admin_insert"
+  ON assessment_options FOR INSERT
+  WITH CHECK (is_admin());
+
+CREATE POLICY "options_admin_update"
+  ON assessment_options FOR UPDATE
   USING (is_admin());
 
--- ── assessment_attempts — own rows only ──────────────────────
-CREATE POLICY "attempts_own"
-  ON assessment_attempts FOR ALL
+CREATE POLICY "options_admin_delete"
+  ON assessment_options FOR DELETE
+  USING (is_admin());
+
+-- ── assessment_attempts ──────────────────────────────────────
+CREATE POLICY "attempts_select"
+  ON assessment_attempts FOR SELECT
+  USING (auth.uid() = user_id OR is_admin());
+
+CREATE POLICY "attempts_insert"
+  ON assessment_attempts FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "attempts_update"
+  ON assessment_attempts FOR UPDATE
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "attempts_admin_read"
-  ON assessment_attempts FOR SELECT
-  USING (is_admin());
-
--- ── assessment_answers — via own attempts ────────────────────
-CREATE POLICY "answers_own"
-  ON assessment_answers FOR ALL
+-- ── assessment_answers ───────────────────────────────────────
+CREATE POLICY "answers_select"
+  ON assessment_answers FOR SELECT
   USING (
+    is_admin()
+    OR EXISTS (
+      SELECT 1 FROM assessment_attempts
+      WHERE id = attempt_id AND user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "answers_insert"
+  ON assessment_answers FOR INSERT
+  WITH CHECK (
     EXISTS (
       SELECT 1 FROM assessment_attempts
       WHERE id = attempt_id AND user_id = auth.uid()
     )
   );
 
-CREATE POLICY "answers_admin_read"
-  ON assessment_answers FOR SELECT
-  USING (is_admin());
+-- ── notifications ────────────────────────────────────────────
+CREATE POLICY "notifications_select"
+  ON notifications FOR SELECT
+  USING (auth.uid() = user_id);
 
--- ── notifications — own only ─────────────────────────────────
-CREATE POLICY "notifications_own"
-  ON notifications FOR ALL
+CREATE POLICY "notifications_insert"
+  ON notifications FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "notifications_update"
+  ON notifications FOR UPDATE
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
--- ── audit_logs — admins only ─────────────────────────────────
-CREATE POLICY "audit_admin_read"
+CREATE POLICY "notifications_delete"
+  ON notifications FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- ── audit_logs ───────────────────────────────────────────────
+-- Admins can read; inserts happen server-side only
+CREATE POLICY "audit_admin_select"
   ON audit_logs FOR SELECT
   USING (is_admin());
